@@ -1,0 +1,34 @@
+services:
+  web:
+    build: .                          # build image from the Dockerfile in this folder
+    image: ${DOCKERHUB_USER}/${ROLL}-app:1.0   # saira102/55503-app:1.0 (needed for Docker Hub)
+    ports:
+      - "${HOST_PORT}:5000"           # host:container (HOST_PORT comes from .env)
+    environment:
+      - STUDENT_NAME=${STUDENT_NAME}  # environment variables (values from .env)
+      - ROLL=${ROLL}
+      - REDIS_HOST=redis              # service name = DNS name on the custom network
+    networks:
+      - appnet                        # custom network
+    depends_on:
+      redis:
+        condition: service_healthy    # start web only after redis is ready
+
+  redis:
+    image: redis:alpine               # the second pre-pulled image
+    command: redis-server --appendonly yes   # write data to disk so it survives restarts
+    volumes:
+      - redis-data:/data              # named volume mounted where redis stores data
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  appnet:                             # custom network (bridge by default)
+
+volumes:
+  redis-data:                         # named volume (managed by Docker)
